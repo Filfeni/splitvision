@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SplitView</title>
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+
+<!-- ── Top bar ──────────────────────────────────────── -->
+<div id="topbar">
+  <div class="logo-mark">
+    <svg viewBox="0 0 16 16"><rect x="0" y="0" width="7" height="7" rx="1.5"/><rect x="9" y="0" width="7" height="7" rx="1.5"/><rect x="0" y="9" width="7" height="7" rx="1.5"/><rect x="9" y="9" width="7" height="7" rx="1.5"/></svg>
+  </div>
+  <h1>SplitView</h1>
+
+  <div class="divider-v"></div>
+
+  <div class="layout-group">
+    <span class="layout-label">Layout</span>
+
+    <button class="layout-btn" data-layout="1-solo" title="Single source">
+      <svg viewBox="0 0 18 18" fill="none"><rect x="1" y="1" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/></svg>
+    </button>
+    <button class="layout-btn" data-layout="2-side" title="Two side by side">
+      <svg viewBox="0 0 18 18" fill="none">
+        <rect x="1" y="1" width="7" height="16" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="10" y="1" width="7" height="16" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+    </button>
+    <button class="layout-btn" data-layout="2-stack" title="Two stacked">
+      <svg viewBox="0 0 18 18" fill="none">
+        <rect x="1" y="1" width="16" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="1" y="10" width="16" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+    </button>
+    <button class="layout-btn" data-layout="3-main-right" title="Three: main + sidebar">
+      <svg viewBox="0 0 18 18" fill="none">
+        <rect x="1" y="1" width="9" height="16" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="12" y="1" width="5" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="12" y="10" width="5" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+    </button>
+    <button class="layout-btn" data-layout="3-top" title="Three: main top">
+      <svg viewBox="0 0 18 18" fill="none">
+        <rect x="1" y="1" width="16" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="1" y="12" width="7" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="10" y="12" width="7" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+    </button>
+    <button class="layout-btn active" data-layout="4-grid" title="Four equal grid">
+      <svg viewBox="0 0 18 18" fill="none">
+        <rect x="1" y="1" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="10" y="1" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="1" y="10" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="10" y="10" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+    </button>
+    <button class="layout-btn" data-layout="4-main-right" title="Four: main + 3 sidebar">
+      <svg viewBox="0 0 18 18" fill="none">
+        <rect x="1" y="1" width="9" height="16" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="12" y="1" width="5" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="12" y="7" width="5" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="12" y="13" width="5" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+    </button>
+    <button class="layout-btn" data-layout="4-main-top" title="Four: main top">
+      <svg viewBox="0 0 18 18" fill="none">
+        <rect x="1" y="1" width="16" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="1" y="12" width="4" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="7" y="12" width="4" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="13" y="12" width="4" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="spacer"></div>
+
+  <!-- Audio mixer toggle -->
+  <button id="mixer-toggle-btn" title="Audio mixer" class="topbar-icon-btn">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <line x1="3" y1="2" x2="3" y2="14"/><circle cx="3" cy="9" r="2" fill="currentColor" stroke="none"/>
+      <line x1="8" y1="2" x2="8" y2="14"/><circle cx="8" cy="5" r="2" fill="currentColor" stroke="none"/>
+      <line x1="13" y1="2" x2="13" y2="14"/><circle cx="13" cy="11" r="2" fill="currentColor" stroke="none"/>
+    </svg>
+    Mixer
+  </button>
+
+  <button id="add-source-btn">
+    <svg viewBox="0 0 16 16" fill="none" stroke="white" stroke-width="2"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+    Add source
+  </button>
+</div>
+
+<!-- ── Audio Mixer Panel ──────────────────────────────── -->
+<div id="mixer-panel" class="mixer-hidden">
+  <div class="mixer-header">
+    <span class="mixer-title">Audio mixer</span>
+    <div class="mixer-master">
+      <span class="mixer-lbl">Master</span>
+      <input type="range" id="master-vol" min="0" max="100" value="100" class="vol-slider master-slider">
+      <span class="mixer-val" id="master-vol-val">100%</span>
+    </div>
+  </div>
+  <div id="mixer-channels" class="mixer-channels">
+    <!-- populated by JS -->
+  </div>
+</div>
+
+<!-- ── Canvas ──────────────────────────────────────── -->
+<div id="canvas-wrapper">
+  <div id="canvas" data-layout="4-grid"></div>
+  <div id="canvas-empty">
+    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="2" y="2" width="20" height="20" rx="3"/>
+      <rect x="26" y="2" width="20" height="20" rx="3"/>
+      <rect x="2" y="26" width="20" height="20" rx="3"/>
+      <rect x="26" y="26" width="20" height="20" rx="3"/>
+    </svg>
+    <h2>No sources yet</h2>
+    <p>Click "Add source" to capture a browser tab</p>
+  </div>
+</div>
+
+<!-- ── Status bar ──────────────────────────────────── -->
+<div id="statusbar">
+  <span id="status-count"><span class="status-dot"></span>No active sources</span>
+  <span id="status-layout">Layout: 4-grid</span>
+  <span id="status-audio"></span>
+</div>
+
+<!-- ── Fullscreen overlay ───────────────────────────── -->
+<div id="fullscreen-overlay" class="fs-hidden">
+  <video id="fs-video" autoplay playsinline></video>
+  <div id="fs-controls">
+    <span id="fs-label"></span>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <span id="fs-audio-badge" class="fs-badge"></span>
+      <button id="fs-close-btn" title="Exit fullscreen (Esc)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="2" y1="2" x2="14" y2="14"/><line x1="14" y1="2" x2="2" y2="14"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tab picker modal ─────────────────────────────── -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div class="modal-header">
+      <h2>Choose a tab to capture</h2>
+      <button class="modal-close" id="modal-close-btn" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="tab-list">
+      <p style="color:#5a5a6e;font-size:13px;padding:8px 4px;">Loading tabs…</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="modal-cancel-btn">Cancel</button>
+      <button class="btn-primary" id="modal-confirm-btn" disabled>Capture tab</button>
+    </div>
+  </div>
+</div>
+
+<script src="viewer.js"></script>
+</body>
+</html>
