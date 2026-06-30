@@ -120,7 +120,7 @@ function createSlotEl(index) {
   // Click empty area → add
   div.addEventListener('click', (e) => {
     if (e.target.closest('.slot-ctrl-btn')) return;
-    if (!state.slots[index]) openModal(index);
+    if (!state.slots[index]) startCapture(index);
   });
 
   div.querySelector('.slot-ctrl-btn.fullscreen').addEventListener('click', e => {
@@ -133,7 +133,7 @@ function createSlotEl(index) {
     e.stopPropagation(); toggleMute(index);
   });
   div.querySelector('.slot-ctrl-btn.swap').addEventListener('click', e => {
-    e.stopPropagation(); openModal(index);
+    e.stopPropagation(); startCapture(index);
   });
   div.querySelector('.slot-ctrl-btn.remove').addEventListener('click', e => {
     e.stopPropagation(); removeSource(index);
@@ -156,129 +156,108 @@ function setLayout(layout) {
     b.classList.toggle('active', b.dataset.layout === layout);
   });
   statusLayout.textContent = `Layout: ${layout}`;
+  updateAddButton();
+  updateUI();
 }
+
+// Maximum visible slots per layout
+const LAYOUT_SLOT_COUNT = {
+  '1-solo': 1,
+  '2-side': 2,
+  '2-stack': 2,
+  '3-main-right': 3,
+  '3-top': 3,
+  '4-grid': 4,
+  '4-main-right': 4,
+  '4-main-top': 4,
+};
 
 // ── Add source ───────────────────────────────────────────────────
 function bindAddButton() {
   addBtn.addEventListener('click', () => {
-    const freeSlot = state.slots.findIndex(s => s === null);
-    if (freeSlot !== -1) openModal(freeSlot);
+    const visibleCount = LAYOUT_SLOT_COUNT[state.layout] || MAX_SOURCES;
+    const freeSlot = state.slots.findIndex((s, i) => s === null && i < visibleCount);
+    if (freeSlot !== -1) startCapture(freeSlot);
   });
 }
 
 function updateAddButton() {
-  addBtn.disabled = state.slots.filter(Boolean).length >= MAX_SOURCES;
+  const visibleCount = LAYOUT_SLOT_COUNT[state.layout] || MAX_SOURCES;
+  const activeWithinLayout = state.slots.filter((s, i) => s && i < visibleCount).length;
+  addBtn.disabled = activeWithinLayout >= visibleCount;
 }
 
-// ── Modal ────────────────────────────────────────────────────────
+// ── Modal (kept only as a lightweight "choosing…" indicator) ──────
 function bindModal() {
   modalCancel.addEventListener('click', closeModal);
   modalCloseBtn.addEventListener('click', closeModal);
   modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModal(); });
-  modalConfirm.addEventListener('click', confirmCapture);
 }
 
 function openModal(slotIndex) {
-  state.pendingSlotIndex = slotIndex;
-  state.selectedTabId = null;
-  modalConfirm.disabled = true;
-  modalOverlay.classList.add('open');
-  loadTabs();
+  startCapture(slotIndex);
 }
 
 function closeModal() {
   modalOverlay.classList.remove('open');
   state.pendingSlotIndex = null;
-  state.selectedTabId = null;
 }
 
-function loadTabs() {
-  tabList.innerHTML = '<p style="color:#5a5a6e;font-size:13px;padding:8px 4px;">Loading tabs…</p>';
-  chrome.runtime.sendMessage({ type: 'GET_TABS' }, ({ tabs }) => {
-    if (!tabs || tabs.length === 0) {
-      tabList.innerHTML = '<p style="color:#5a5a6e;font-size:13px;padding:8px 4px;">No capturable tabs found.</p>';
+// ── Capture via chrome.desktopCapture (native picker, no activeTab issues) ──
+function startCapture(slotIndex) {
+  state.pendingSlotIndex = slotIndex;
+
+  // Show a lightweight "waiting for picker" state
+  tabList.innerHTML = '<p style="color:#8b8a9a;font-size:13px;padding:8px 4px;">Choose a tab in the Chrome picker window…</p>';
+  modalOverlay.classList.add('open');
+  modalConfirm.style.display = 'none';
+
+  chrome.runtime.sendMessage({ type: 'CAPTURE_DESKTOP' }, async ({ streamId, error }) => {
+    modalOverlay.classList.remove('open');
+    modalConfirm.style.display = '';
+
+    if (error || !streamId) {
+      if (error && !/cancel/i.test(error)) alert('Capture failed: ' + error);
+      state.pendingSlotIndex = null;
       return;
     }
-    tabList.innerHTML = '';
-    const capturedIds = state.slots.filter(Boolean).map(s => s.tabId);
-    tabs.forEach(tab => {
-      const already = capturedIds.includes(tab.id);
-      const item = document.createElement('div');
-      item.className = 'tab-item' + (already ? ' already' : '');
-      item.dataset.tabId = tab.id;
 
-      const faviconHtml = tab.favIconUrl
-        ? `<img class="tab-favicon" src="${escHtml(tab.favIconUrl)}" alt="" onerror="this.style.display='none'">`
-        : `<div class="tab-favicon-fallback">T</div>`;
-
-      item.innerHTML = `
-        ${faviconHtml}
-        <div class="tab-info">
-          <div class="tab-title">${escHtml(tab.title || 'Untitled')}</div>
-          <div class="tab-url">${escHtml(truncateUrl(tab.url))}</div>
-        </div>
-        ${already ? '<span class="tab-badge">Captured</span>' : ''}
-      `;
-
-      if (!already) {
-        item.addEventListener('click', () => {
-          document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('selected'));
-          item.classList.add('selected');
-          state.selectedTabId = tab.id;
-          modalConfirm.disabled = false;
-        });
-      }
-      tabList.appendChild(item);
-    });
-  });
-}
-
-async function confirmCapture() {
-  if (!state.selectedTabId || state.pendingSlotIndex === null) return;
-  modalConfirm.disabled = true;
-  modalConfirm.textContent = 'Capturing…';
-
-  const tabId = state.selectedTabId;
-  const slotIndex = state.pendingSlotIndex;
-
-  chrome.runtime.sendMessage({ type: 'CAPTURE_TAB', tabId, viewerTabId: viewerOwnTabId }, async ({ streamId, error }) => {
-    if (error) {
-      alert('Capture failed: ' + error);
-      modalConfirm.disabled = false;
-      modalConfirm.textContent = 'Capture tab';
-      return;
-    }
     try {
-      // Request BOTH audio and video
+      // Try capturing both video and audio
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { mandatory: { chromeMediaSource: 'tab', chromeMediaSourceId: streamId } },
-        audio: { mandatory: { chromeMediaSource: 'tab', chromeMediaSourceId: streamId } },
+        video: {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: streamId,
+          }
+        },
+        audio: {
+          mandatory: {
+            chromeMediaSource: 'desktop',
+            chromeMediaSourceId: streamId,
+          }
+        }
       });
-
-      chrome.tabs.get(tabId, (tab) => {
-        attachStream(slotIndex, tabId, tab ? tab.title : `Tab ${tabId}`, stream);
-      });
-
-      closeModal();
-      modalConfirm.textContent = 'Capture tab';
+      attachStream(slotIndex, null, stream.getVideoTracks()[0]?.label || 'Captured tab', stream);
     } catch (err) {
-      // Fallback: try video-only if audio fails
+      // Fallback: video only
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { mandatory: { chromeMediaSource: 'tab', chromeMediaSourceId: streamId } },
+          video: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: streamId,
+            }
+          },
           audio: false,
         });
-        chrome.tabs.get(tabId, (tab) => {
-          attachStream(slotIndex, tabId, tab ? tab.title : `Tab ${tabId}`, stream, true);
-        });
-        closeModal();
-        modalConfirm.textContent = 'Capture tab';
+        attachStream(slotIndex, null, stream.getVideoTracks()[0]?.label || 'Captured tab', stream, true);
       } catch (err2) {
         alert('Capture failed: ' + err2.message);
-        modalConfirm.disabled = false;
-        modalConfirm.textContent = 'Capture tab';
       }
     }
+
+    state.pendingSlotIndex = null;
   });
 }
 

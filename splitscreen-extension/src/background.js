@@ -1,6 +1,7 @@
 let viewerTabId = null;
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+
   if (msg.type === 'OPEN_VIEWER') {
     openViewer().then(result => {
       viewerTabId = result.tabId;
@@ -30,53 +31,41 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
-  if (msg.type === 'CAPTURE_TAB') {
-    captureTab(msg.tabId, msg.viewerTabId, sendResponse);
-    return true;
-  }
-});
-
-// Capture strategy:
-// 1. Temporarily focus the target tab so the extension is "active" on it
-// 2. Call tabCapture.getMediaStreamId with no targetTabId (captures active tab)
-//    but pass consumerTabId = viewer tab so the stream can be consumed there
-// 3. Restore focus back to the viewer tab
-async function captureTab(tabId, consumerTabId, sendResponse) {
-  const effectiveConsumer = consumerTabId || viewerTabId;
-
-  try {
-    // Store which tab was active before we switch
-    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-    // Focus the target tab briefly so tabCapture can act on it
-    await chrome.tabs.update(tabId, { active: true });
-
-    // Small yield to let Chrome register the tab switch
-    await new Promise(r => setTimeout(r, 80));
-
-    // Now get the stream id — targeting the now-active tab
-    chrome.tabCapture.getMediaStreamId(
-      { consumerTabId: effectiveConsumer },
-      async (streamId) => {
-        const err = chrome.runtime.lastError;
-
-        // Restore focus to the viewer (or previous active tab)
-        const restoreId = effectiveConsumer || (activeTab && activeTab.id);
-        if (restoreId) {
-          await chrome.tabs.update(restoreId, { active: true }).catch(() => {});
-        }
-
-        if (err || !streamId) {
-          sendResponse({ error: err ? err.message : 'No stream ID returned' });
+  // Use desktopCapture instead of tabCapture — no activeTab restriction,
+  // works from any context, shows Chrome's native source picker.
+  if (msg.type === 'CAPTURE_DESKTOP') {
+    const sources = ['tab'];   // restrict picker to tabs only
+    const reqId = chrome.desktopCapture.chooseDesktopMedia(
+      sources,
+      // Pass the viewer tab as the requesting tab so the picker appears there
+      sender.tab || null,
+      (streamId, options) => {
+        if (!streamId) {
+          sendResponse({ error: 'User cancelled or capture unavailable.' });
         } else {
-          sendResponse({ streamId });
+          sendResponse({ streamId, options });
         }
       }
     );
-  } catch (e) {
-    sendResponse({ error: e.message });
+    // If caller needs to cancel (e.g. modal closed), they can send CANCEL_CAPTURE
+    // Store reqId keyed by sender tab
+    if (sender.tab) pendingCaptures.set(sender.tab.id, reqId);
+    return true;
   }
-}
+
+  if (msg.type === 'CANCEL_CAPTURE') {
+    const reqId = pendingCaptures.get(sender.tab && sender.tab.id);
+    if (reqId != null) {
+      chrome.desktopCapture.cancelChooseDesktopMedia(reqId);
+      pendingCaptures.delete(sender.tab.id);
+    }
+    sendResponse({ ok: true });
+    return true;
+  }
+
+});
+
+const pendingCaptures = new Map();
 
 async function openViewer() {
   const url = chrome.runtime.getURL('src/viewer.html');
